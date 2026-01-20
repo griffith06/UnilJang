@@ -39,32 +39,32 @@ Game Programmer / Technical Director / Engine Architect
 **Technical Director (TD)**  
 **2017.03 ~ 현재**
 
+#### Legend of Ymir
+- 서버 최적화/안정화 담당
+- 국내 동시접속자 약 10만 명 규모 서비스
+- 글로벌 약 17만 동시접속 규모
+- Azure 기반 글로벌 서비스 안정적 런칭 및 운영
+
 #### Icarus M
 - 엔진 담당
 - PC 버전 성능 최적화
 - 모바일 버전 메모리 사용량 최적화
 - 전반적인 실행 속도 및 안정성 개선
 
-#### Legend of Ymir
-- 서버 안정화 담당
-- 국내 동시접속자 약 10만 명 규모 서비스
-- 글로벌 약 17만 동시접속 규모
-- Azure 기반 글로벌 서비스 안정적 런칭 및 운영
-
 ---
 
-### j2jlab 
+### j2jlab (founder)
 **CTO**  
 **2013 ~ 2016**
 
-- 자체 엔진 기반 모바일 MMORPG 개발
+- 자체 엔진 기반 모바일 MMORPG
 - PC 엔진 → 모바일 엔진 전환
 - 엔진 / 클라이언트 / 서버 아키텍처 설계 및 구현
 - 서버 초기 구축 및 스트레스 테스트 환경 구성
 
 ---
 
-### Zerodin Games / Indie21
+### Zerodin Games (founder)
 **CTO / CEO**  
 **2006 ~ 2012**
 
@@ -150,6 +150,7 @@ Game Programmer / Technical Director / Engine Architect
 > Cross Platform 게임까지  
 > **게임 제작에 필요한 모든 기술을 직접 구현하고 리딩할 수 있다는 점이  
 > 가장 큰 강점입니다.**
+
 
 
 
