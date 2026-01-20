@@ -152,7 +152,7 @@ Game Programmer / Technical Director / Engine Architect
 - Shepherd (Demo)
 
 <p align="center">
-  <img src="images/classic_games_01.jpg?v=2" width="700" />
+  <img src="[images/classic_games_01.jpg?v=2](https://github.com/griffith06/UnilJang/blob/main/images/classic_games_01.jpg)" width="700" />
 </p>
 ---
 
@@ -178,6 +178,7 @@ Game Programmer / Technical Director / Engine Architect
 > Cross Platform 게임까지  
 > **게임 제작에 필요한 모든 기술을 직접 구현하고 리딩할 수 있다는 점이  
 > 가장 큰 강점입니다.**
+
 
 
 
