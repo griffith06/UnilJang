@@ -90,16 +90,16 @@ Game Programmer / Technical Director / Engine Architect
 
 ### MMORPG / Online
 
-- **Legend of Ymir**
+- **Legend of Ymir**  2025
   - 서버 안정화
   - Azure 기반 글로벌 서비스
   - 국내 10만 / 글로벌 17만 동접
 
-- **Icarus M**
+- **Icarus M** 2018
   - 엔진 담당
   - PC / Mobile 성능 및 메모리 최적화
 
-- **RF Online**
+- **RF Online**  2004
   - 엔진 설계 및 제작
   - Technical Director
   - 최대 동시접속 약 8만
@@ -112,7 +112,7 @@ Game Programmer / Technical Director / Engine Architect
   - Luna: Moonlight Thieves
   - 기타 다수 상용 게임
 
-### Package / Classic Games
+### Package / Classic Games  1994년~
 
 - 붉은매 (3D RPG)
 - 귀천도
@@ -144,4 +144,5 @@ Game Programmer / Technical Director / Engine Architect
 > Cross Platform 게임까지  
 > **게임 제작에 필요한 모든 기술을 직접 구현하고 리딩할 수 있다는 점이  
 > 가장 큰 강점입니다.**
+
 
