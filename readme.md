@@ -29,7 +29,7 @@ Game Programmer / Technical Director / Engine Architect
 - **Backend**: PHP, MySQL, Redis, Linux
 - **Optimization**: Memory / Performance / Asset / Stability
 - **Platform**: PC, Windows, Linux, Android, iOS
-- **Cloud**: Azure 기반 글로벌 서비스 운영 경험
+- **Cloud**: AWS, Azure 기반 글로벌 서비스 운영 경험
 
 ---
 
@@ -53,9 +53,9 @@ Game Programmer / Technical Director / Engine Architect
 
 ---
 
-### j2jlab
+### j2jlab 
 **CTO**  
-**2013 ~**
+**2013 ~ 2016**
 
 - 자체 엔진 기반 모바일 MMORPG 개발
 - PC 엔진 → 모바일 엔진 전환
@@ -104,12 +104,18 @@ Game Programmer / Technical Director / Engine Architect
   - Technical Director
   - 최대 동시접속 약 8만
 
+- **하트캐슬Mobile RPG**  2016
+  - 엔진 설계 및 제작, 서버제작.
+  - 중국안드로이드(기기 호환율 93.45%), iOS 동시 런칭 
+  - Technical Director
+
 ### Engine & Commercial Titles
 
 - Zerodin Engine
-  - Dragona
-  - Queen’s Blade
-  - Luna: Moonlight Thieves
+  - 드라고나(Dragona)
+  - 퀸스블레이드(Queen’s Blade)
+  - 불패 온라인
+  - 루나달빛도적단(Luna: Moonlight Thieves)
   - 기타 다수 상용 게임
 
 ### Package / Classic Games  1994년~
@@ -144,5 +150,6 @@ Game Programmer / Technical Director / Engine Architect
 > Cross Platform 게임까지  
 > **게임 제작에 필요한 모든 기술을 직접 구현하고 리딩할 수 있다는 점이  
 > 가장 큰 강점입니다.**
+
 
 
