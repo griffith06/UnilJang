@@ -94,20 +94,40 @@ Game Programmer / Technical Director / Engine Architect
   - 서버 안정화
   - Azure 기반 글로벌 서비스
   - 국내 10만 / 글로벌 17만 동접
+<p align="center">
+  <img src="images/legend_of_ymir_01.jpg" width="700" />
+</p>
 
+---
 - **Icarus M** 2018
   - 엔진 담당
   - PC / Mobile 성능 및 메모리 최적화
 
+<p align="center">
+  <img src="images/icarus_m_01.jpg" width="700" />
+</p>
+
+---
 - **RF Online**  2004
   - 엔진 설계 및 제작
   - Technical Director
   - 최대 동시접속 약 8만
 
+<p align="center">
+  <img src="images/rf_online_01.jpg" width="700" />
+</p>
+
+---
 - **하트캐슬Mobile RPG**  2016
   - 엔진 설계 및 제작, 서버제작.
   - 중국안드로이드(기기 호환율 93.45%), iOS 동시 런칭 
   - Technical Director
+
+<p align="center">
+  <img src="images/heartcastle_01.jpg" width="700" />
+</p>
+
+---
 
 ### Engine & Commercial Titles
 
@@ -118,6 +138,11 @@ Game Programmer / Technical Director / Engine Architect
   - 루나달빛도적단(Luna: Moonlight Thieves)
   - 기타 다수 상용 게임
 
+<p align="center">
+  <img src="images/engine_titles_01.jpg" width="700" />
+</p>
+
+---
 ### Package / Classic Games  1994년~
 
 - 붉은매 (3D RPG)
@@ -126,6 +151,9 @@ Game Programmer / Technical Director / Engine Architect
 - Twins
 - Shepherd (Demo)
 
+<p align="center">
+  <img src="images/classic_games_01.jpg" width="700" />
+</p>
 ---
 
 ## Engine Development History
@@ -150,6 +178,7 @@ Game Programmer / Technical Director / Engine Architect
 > Cross Platform 게임까지  
 > **게임 제작에 필요한 모든 기술을 직접 구현하고 리딩할 수 있다는 점이  
 > 가장 큰 강점입니다.**
+
 
 
 
