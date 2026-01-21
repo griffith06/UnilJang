@@ -3,13 +3,17 @@
 ## 장언일 (Unil Jang)
 Game Programmer / Technical Director / Engine Architect  
 
-- 게임 프로그래밍 경력 30년 이상  
-- 자체 엔진, 상용 엔진, 모바일 게임 엔진 제작  
-- MMORPG 서버, HTTP 서버, 대규모 라이브 서비스 경험  
-- PC / Online / Mobile / Cross-Platform 게임 전반 경험  
+- 엔진, 서버, 클라이언트, 라이브 서비스까지 게임을 기술적으로 성립시키고 **실제 대규모 서비스(100K+ CCU)**까지 성공시켜 온 테크니컬 디렉터입니다.
+- 자체 엔진 제작부터 MMORPG 서버, 모바일 최적화, 글로벌 라이브 운영까지 게임 제작에 필요한 전 기술 영역을 직접 설계하고 구현해왔습니다.
 
 ---
+## Why Me
+- 엔진 → 클라이언트 → 서버 → 라이브 운영까지 전 영역 실무 경험
+- 30년 이상 게임 프로그래밍 경력, 패키지·온라인·모바일·Cross-Platform 모두 경험
+- 100K+ CCU 규모 MMORPG 실제 서비스 및 안정화 경험
+- 저사양 환경에서도 성능과 품질을 동시에 만족시키는 최적화 역량 
 
+---
 ## Core Strengths
 
 - 게임 개발 전 분야 기술 리딩 (엔진 / 클라이언트 / 서버)
@@ -57,7 +61,7 @@ Game Programmer / Technical Director / Engine Architect
 **CTO**  
 **2013 ~ 2016**
 
-- 자체 엔진 기반 모바일 MMORPG
+- 자체 엔진 기반 모바일 RPG
 - PC 엔진 → 모바일 엔진 전환
 - 엔진 / 클라이언트 / 서버 아키텍처 설계 및 구현
 - 서버 초기 구축 및 스트레스 테스트 환경 구성
@@ -178,6 +182,7 @@ Game Programmer / Technical Director / Engine Architect
 > Cross Platform 게임까지  
 > **게임 제작에 필요한 모든 기술을 직접 구현하고 리딩할 수 있다는 점이  
 > 가장 큰 강점입니다.**
+
 
 
 
