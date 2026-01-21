@@ -50,9 +50,9 @@ Game Programmer / Technical Director / Engine Architect
 - Azure 기반 글로벌 서비스 안정적 런칭 및 운영
 
 #### Icarus M
-- 엔진 담당
+- 언리얼 엔진4 최적화/안정성 담당
 - PC 버전 성능 최적화
-- 모바일 버전 메모리 사용량 최적화
+- 모바일 버전 성능및 메모리 사용량 최적화
 - 전반적인 실행 속도 및 안정성 개선
 
 ---
@@ -182,6 +182,7 @@ Game Programmer / Technical Director / Engine Architect
 > Cross Platform 게임까지  
 > **게임 제작에 필요한 모든 기술을 직접 구현하고 리딩할 수 있다는 점이  
 > 가장 큰 강점입니다.**
+
 
 
 
