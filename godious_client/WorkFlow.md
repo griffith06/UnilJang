@@ -1,11 +1,28 @@
 # Godius Remaster — 작업 순서 (WorkFlow)
 
+
+## Phase 0: 오프라인 개발 모드
+
+서버 없이 단독 실행하여 빠른 개발/테스트 반복을 가능하게 한다.
+- 전처리기 `_GODIOUS_OFF_LINE_MODE` 정의 시 활성화, 미정의 시 기존 온라인 모드 그대로 동작
+- 구현 파일: `OfflineMode.h`, `OfflineMode.cpp`
+
+### 0-A. 오프라인 부팅 & 내 캐릭터 조작
+- [x] WinMain에서 서버 관련 초기화(소켓, 로그인, 캐릭터 선택) 스킵, 윈도우/비디오/사운드/폰트 초기화는 유지
+- [x] `InitOfflineMode()`에서 게임 데이터 로컬 초기화 (캐릭터 생성, 맵 로드, 스크롤 버퍼, UI)
+- [x] 캐릭터 이동: `ActionUserKey()`에서 서버 패킷 대신 `OfflineMovePlayer()` 호출하여 로컬 좌표 갱신 + 타일 재렌더
+
+### 0-B. 몬스터 / NPC / 다른 캐릭터 배치
+- [x] 몬스터 3~4종, NPC 2~3종, 다른 플레이어 20명을 맵 중앙 주변에 로컬 생성 (idle 상태)
+- [x] 렌더링 부하 테스트 용도 (다수 캐릭터 동시 표시 확인)
+
+
 ---
 
 ## Phase 1: DX11 기본 프레임워크 (Step 1)
 
 ### 1-A. 개발 환경 구성
-- [ ] VS2005 → 최신 Visual Studio 마이그레이션 (또는 VS2005에서 DX11 SDK 연동)
+- [ ] DX11 SDK 연동
 - [ ] DirectX 11 SDK 헤더/라이브러리 프로젝트에 추가
 - [ ] 기존 DirectDraw 링크 제거 (ddraw.lib, dinput.lib, dxguid.lib, dsound.lib)
 - [ ] d3d11.lib, dxgi.lib, d3dcompiler.lib 링크 추가
@@ -21,7 +38,7 @@
 - [ ] `InitAppWin()` 수정 — 1280×960 창모드 기본
 - [ ] 풀스크린 전환 (Alt+Enter): SwapChain::SetFullscreenState()
 - [ ] Alt+Tab 전환 시 디바이스 로스트 처리
-- [ ] 창 크기 변경 시 SwapChain 리사이즈 대응
+- [ ] 창 크기 변경 시 SwapChain 리사이즈 대응, 창크기는 최소 가로 800 ,세로 600으로 정함. 크기변경시 최소이상 변경 안되게 함.
 - [ ] `gWIN` 플래그 연동
 
 ### 1-D. 기존 DirectDraw 제거
