@@ -37,14 +37,15 @@ MSSDK7\include 헤더 의존:
   - **SDL2_mixer** (MIDI+WAV+MP3, 검증된 라이브러리)
   - **FMOD** (상용, 스팀 게임에서 널리 사용)
 
-### A-5. NPGameLib (nProtect GameGuard) 처리
+### A-5. NPGameLib (nProtect GameGuard) 처리 — **폐기 예정**
 - [ ] 현재 `NPGameLib_MT.lib` / `NPGameLib_MTd.lib` — **32비트 전용 정적 라이브러리**
 - [ ] D3D 디바이스 체크 함수 (`SetD3DDeviceInfo`, `CheckD3DDevice`) 포함 — DX11 연동 영향
-- [ ] 패킷 암/복호화 기능 포함 — 제거 시 자체 구현 필요
-- [ ] 스팀 런칭 시 GameGuard 유지 여부 결정
-  - 유지 시: INCA에 64비트 라이브러리 요청
-  - 제거 시: `NO_GAMEGUARD` 전처리기 활성화 (이미 코드에 분기 존재)
+- [x] ~~패킷 암/복호화 기능 포함 — 제거 시 자체 구현 필요~~ → 조사 결과 NPGameLib 패킷 암/복호화 함수(`EncryptPacket`, `DecryptPacket` 등)는 **선언만 되어있고 실제 호출하지 않음**. 로그인 서버는 자체 AES-128 CBC(`AES.cpp`) 사용, 게임 서버는 체크섬만 사용.
+- [ ] `NO_GAMEGUARD` 전처리기 활성화하여 제거 (이미 Debug 빌드에서 비활성화 중, Release에도 적용)
+- [ ] NPGameLib 관련 파일 정리: `NPGameLib/` 디렉토리, `GameGuard/` 디렉토리, 콜백 코드(`Winmain.cpp:220-365`)
 - [ ] 스팀 자체 Anti-Cheat (VAC 또는 EAC) 도입 검토
+- [ ] 자체 AES 암호화 보안 개선 — 현재 키/IV가 소스에 하드코딩(`"20190819abcdefgh"` / `"20190819ABCDEFGH"`)되어 있어 보안 취약
+- [ ] 게임 서버 통신 암호화 추가 검토 — 현재 `SendMapServer`/`SendMainServer`는 체크섬(`MakeCheckMsgData`)만 사용하며 암호화 없음
 
 ### A-6. CharBind.dll 64비트 대응
 - [ ] `Winmain.cpp:722` — `LoadLibrary("CharBind.dll")` 런타임 로드
@@ -169,6 +170,35 @@ MSSDK7\include 헤더 의존:
 - [ ] AI 업스케일링 적용 방안 검토 (ESRGAN, Real-ESRGAN 등)
 - [ ] 업스케일된 리소스 품질 검수 및 적용
 
+### E-2. RESTools SPR2 True Color 포맷 지원
+- [ ] 기존 SPR 포맷 (256컬러 팔레트) → SPR2 True Color 포맷 지원 추가
+- [ ] SPR2 이미지 데이터: DDS BC7 블록 압축 적용 (GPU 네이티브 디코딩)
+- [ ] RESTools (EF.vcxproj)에서 SPR2 읽기/쓰기 구현
+- [ ] 클라이언트 측 SPR2 로딩/렌더링 대응
+- [ ] **SPR / SPR2 듀얼 포맷 지원** — 게임에서 기존 SPR과 신규 SPR2 모두 로딩 가능하도록 구현
+
+**SPR vs SPR2 (DDS BC7) 비교 분석:**
+
+| 관점 | SPR (현재) | SPR2 (DDS BC7) |
+|------|-----------|----------------|
+| 색상 | 256컬러 팔레트 | True Color (32bit ARGB) |
+| 압축 | RLE (투명 영역 0 byte, 매우 효율적) | BC7 고정 1 byte/pixel (4×4 블록 단위) |
+| 디스크 용량 | 기준 (100MB / 3214파일) | 증가 예상 (1.5~2.5배) — RLE의 투명 영역 효율을 잃음 |
+| GPU 메모리 | 4 byte/pixel (BGRA로 디코딩 후 업로드) | **1 byte/pixel** (BC7 그대로 사용) |
+| CPU 프레임 부하 | RLE 디코딩 + 팔레트 LUT + DYNAMIC 텍스처 매 프레임 전송 | **없음** (IMMUTABLE, 로딩 시 1회) |
+| 렌더링 성능 | 매 프레임 CPU→GPU 전송 (WRITE_DISCARD) | **GPU SRV 바인딩만** (CPU 개입 없음) |
+| 화질 | 256색 제한 | True Color (거의 무손실) |
+
+**성능 이점 요약:**
+- CPU 부하 제거: RLE 디코딩 + 팔레트 변환 + 매 프레임 텍스처 업로드 → 로딩 시 1회로 감소
+- GPU 메모리 절약: BGRA 4byte/pixel → BC7 1byte/pixel (4:1 압축)
+- 렌더링: DYNAMIC → IMMUTABLE 전환으로 드라이버 오버헤드 감소
+
+**주의사항 및 향후 개선:**
+- [ ] 프레임별 개별 DDS 파일 → 파일 수 폭증 문제 → **아틀라스(Spritesheet) 패킹** 검토
+- [ ] 작은 스프라이트 BC7 패딩 낭비 → 스프라이트 크기별 BC 포맷 선택 검토 (BC1/BC3/BC7)
+- [ ] 초기 로딩 시 다수 파일 I/O → 로딩 최적화 필요 (메모리 맵, 번들링 등)
+
 
 ---
 
@@ -278,4 +308,3 @@ Phase D (스팀 런칭)       Phase E (기타)                  ↓
 | 1차 언어 추가 | 중국어 간체/번체 | 출시 후 업데이트 |
 | 2차 언어 추가 | 프랑스어, 독일어, 스페인어 (EFIGS) | 정식 출시 또는 이후 |
 | 3차 언어 추가 | 러시아어, 브라질 포르투갈어 | 시장 반응 보고 결정 |
-
