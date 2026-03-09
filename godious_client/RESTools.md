@@ -227,7 +227,7 @@ SPR2 Header (자연 정렬, pragma pack 불필요):
   0       4       char[4]     Magic: "SPR2"
   4       4       uint32_t    Version (0x0100)
   8       4       uint32_t    Frame Count
-  12      4       uint32_t    BC Format (0=BC1, 1=BC3, 7=BC7 등)
+  12      4       uint32_t    BC Format (0=BC1, 1=BC3, 7=BC7, 0xFF=ARGB8888 비압축 등)
   16      4       uint32_t    Flags (블렌딩 스타일, 알파 모드 등)
   20      4       uint32_t    Original Width (소스 이미지 전체 폭)
   24      4       uint32_t    Original Height
@@ -250,6 +250,7 @@ Frame Table (32 bytes per frame x Frame Count):
 - RLE 대신 **BC(Block Compression)** → GPU에서 직접 텍스쳐로 사용
 - Flags 필드에 **블렌딩 스타일** 저장 (Normal, Additive, Alpha 등)
 - BC 포맷 옵션: BC0~BC7까지 속성에서 지정한 값으로 저장
+- **ARGB8888(비압축) 포맷 지원** (BC Format = 0xFF): 라이팅 스탬프 등 정확한 색상/알파 그라데이션이 필요한 리소스용. BC 압축 없이 ARGB 32bit 원본 그대로 저장. `DXGI_FORMAT_B8G8R8A8_UNORM`으로 GPU 텍스쳐 생성
 
 ### 툴 작업 순서
 
@@ -260,7 +261,7 @@ Frame Table (32 bytes per frame x Frame Count):
 | 1-1 | PNG 로더 추가 | stb_image 도입, CDib에 PNG→32bit 로딩 추가 | Dib.h/cpp, StdAfx.h |
 | 1-2 | CDib 트루컬러 확장 | 8bit 전용 → 32bit RGBA 지원 추가 (기존 8bit 공존) | Dib.h/cpp |
 | 1-3 | BC 압축 라이브러리 도입 | DirectXTex 통합 | 신규, StdAfx.h |
-| 1-4 | SPR2 포맷 클래스 작성 | CSprite2 — SPR2 읽기/쓰기, BC 압축/해제 | Sprite2.h/cpp (신규) |
+| 1-4 | SPR2 포맷 클래스 작성 | CSprite2 — SPR2 읽기/쓰기, BC 압축/해제 + **ARGB8888(비압축) 포맷 호환** (라이팅 스탬프 등) | Sprite2.h/cpp (신규) |
 | 1-5 | FGP 포맷 v2 | sizeof(LPBYTE) 버그 수정, .spr/.spr2 양쪽 참조 지원 | FieldSprite.h/cpp |
 
 #### Phase 2: Sprite Editor 개선
@@ -270,7 +271,7 @@ Frame Table (32 bytes per frame x Frame Count):
 | 2-1 | 소스 로딩 확장 | PCX + PNG 모두 지원, 파일 다이얼로그 필터 추가 | SprDoc.cpp, SprMainView.cpp |
 | 2-2 | 트루컬러 프리뷰 | CSprMainView에서 32bit 소스 이미지 표시 | SprMainView.cpp |
 | 2-3 | SPR2 저장 | 프레임 선택 → BC 압축 → .spr2 저장 | SprDoc.cpp |
-| 2-4 | BC 포맷 옵션 UI | 속성/툴옵션에서 BC0~BC7 선택 | EFConfig.h/cpp, Dlg.cpp |
+| 2-4 | BC 포맷 옵션 UI | 속성/툴옵션에서 BC0~BC7 + ARGB8888(비압축) 선택 | EFConfig.h/cpp, Dlg.cpp |
 | 2-5 | SPR2 로딩/편집 | 기존 .spr2 파일 열어서 프레임 편집 | SprDoc.cpp, Sprite2.cpp |
 | 2-6 | 블렌딩 스타일 UI | 이펙트용: Normal/Additive/Alpha 선택 저장 | SprDoc.cpp, Dlg.cpp |
 
@@ -301,7 +302,7 @@ Frame Table (32 bytes per frame x Frame Count):
 
 | # | 작업 | 설명 |
 |---|------|------|
-| G-1 | SPR2 로더 | BC 데이터 → DX11 CreateTexture2D 직접 생성 (CPU 디코딩 불필요) |
+| G-1 | SPR2 로더 | BC 데이터 → DX11 CreateTexture2D 직접 생성 (CPU 디코딩 불필요). **ARGB8888 포맷은 `DXGI_FORMAT_B8G8R8A8_UNORM`으로 텍스쳐 생성** |
 | G-2 | 블렌딩 모드 적용 | SPR2 Flags에서 블렌딩 스타일 → BlendState 전환 (Normal/Additive/Alpha) |
 | G-3 | 기존 SPR 공존 | 현재 SPR 렌더링 파이프라인 유지, SPR2는 별도 경로 |
 | G-4 | FGP v2 로더 | .spr/.spr2 양쪽 참조 지원 |

@@ -173,8 +173,9 @@ MSSDK7\include 헤더 의존:
 ### E-2. RESTools SPR2 True Color 포맷 지원
 - [ ] 기존 SPR 포맷 (256컬러 팔레트) → SPR2 True Color 포맷 지원 추가
 - [ ] SPR2 이미지 데이터: DDS BC7 블록 압축 적용 (GPU 네이티브 디코딩)
-- [ ] RESTools (EF.vcxproj)에서 SPR2 읽기/쓰기 구현
-- [ ] 클라이언트 측 SPR2 로딩/렌더링 대응
+- [ ] **SPR2 ARGB8888(비압축) 포맷 호환** — 라이팅 스탬프 등 정확한 색상/알파 그라데이션이 필요한 리소스용 (BC Format = 0xFF). `DXGI_FORMAT_B8G8R8A8_UNORM`으로 GPU 텍스쳐 생성
+- [ ] RESTools (EF.vcxproj)에서 SPR2 읽기/쓰기 구현 (BC 압축 + ARGB8888 비압축 양쪽 지원)
+- [ ] 클라이언트 측 SPR2 로딩/렌더링 대응 (BC 포맷 및 ARGB8888 포맷 분기 처리)
 - [ ] **SPR / SPR2 듀얼 포맷 지원** — 게임에서 기존 SPR과 신규 SPR2 모두 로딩 가능하도록 구현
 
 **SPR vs SPR2 (DDS BC7) 비교 분석:**
@@ -182,7 +183,7 @@ MSSDK7\include 헤더 의존:
 | 관점 | SPR (현재) | SPR2 (DDS BC7) |
 |------|-----------|----------------|
 | 색상 | 256컬러 팔레트 | True Color (32bit ARGB) |
-| 압축 | RLE (투명 영역 0 byte, 매우 효율적) | BC7 고정 1 byte/pixel (4×4 블록 단위) |
+| 압축 | RLE (투명 영역 0 byte, 매우 효율적) | BC7 고정 1 byte/pixel (4×4 블록 단위) 또는 ARGB8888 비압축 4 byte/pixel (라이팅 스탬프 등) |
 | 디스크 용량 | 기준 (100MB / 3214파일) | 증가 예상 (1.5~2.5배) — RLE의 투명 영역 효율을 잃음 |
 | GPU 메모리 | 4 byte/pixel (BGRA로 디코딩 후 업로드) | **1 byte/pixel** (BC7 그대로 사용) |
 | CPU 프레임 부하 | RLE 디코딩 + 팔레트 LUT + DYNAMIC 텍스처 매 프레임 전송 | **없음** (IMMUTABLE, 로딩 시 1회) |
