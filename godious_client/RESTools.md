@@ -258,10 +258,10 @@ Frame Table (32 bytes per frame x Frame Count):
 
 | # | 작업 | 설명 | 영향 파일 |
 |---|------|------|-----------|
-| 1-1 | PNG 로더 추가 | stb_image 도입, CDib에 PNG→32bit 로딩 추가 | Dib.h/cpp, StdAfx.h |
-| 1-2 | CDib 트루컬러 확장 | 8bit 전용 → 32bit RGBA 지원 추가 (기존 8bit 공존) | Dib.h/cpp |
+| 1-1 | PNG 로더 추가 | stb_image 도입 (헤더 하나), PNG→32bit RGBA 로딩 | StdAfx.h |
+| 1-2 | CDib32 신규 클래스 | 기존 CDib(8bit)는 그대로 유지. **CDib32** 신규 작성 — 32bit ARGB 버퍼, `StretchDIBits()` 표시, `AlphaBlit()` 합성. 기존 CDib 코드 수정 없음 | Dib32.h/cpp (신규) |
 | 1-3 | BC 압축 라이브러리 도입 | DirectXTex 통합 | 신규, StdAfx.h |
-| 1-4 | SPR2 포맷 클래스 작성 | CSprite2 — SPR2 읽기/쓰기, BC 압축/해제 + **ARGB8888(비압축) 포맷 호환** (라이팅 스탬프 등) | Sprite2.h/cpp (신규) |
+| 1-4 | SPR2 포맷 클래스 작성 | CSprite2 — SPR2 읽기/쓰기, BC 압축/해제 + **ARGB8888(비압축) 포맷 호환** (라이팅 스탬프 등). CDib32 기반 | Sprite2.h/cpp (신규) |
 | 1-5 | FGP 포맷 v2 | sizeof(LPBYTE) 버그 수정, .spr/.spr2 양쪽 참조 지원 | FieldSprite.h/cpp |
 
 #### Phase 2: Sprite Editor 개선
@@ -269,7 +269,7 @@ Frame Table (32 bytes per frame x Frame Count):
 | # | 작업 | 설명 | 영향 파일 |
 |---|------|------|-----------|
 | 2-1 | 소스 로딩 확장 | PCX + PNG 모두 지원, 파일 다이얼로그 필터 추가 | SprDoc.cpp, SprMainView.cpp |
-| 2-2 | 트루컬러 프리뷰 | CSprMainView에서 32bit 소스 이미지 표시 | SprMainView.cpp |
+| 2-2 | 트루컬러 프리뷰 | CSprMainView에서 CDib32를 사용하여 32bit 소스 이미지 표시 (PNG 소스 → CDib32 경로, PCX 소스 → 기존 CDib 경로 분기) | SprMainView.cpp |
 | 2-3 | SPR2 저장 | 프레임 선택 → BC 압축 → .spr2 저장 | SprDoc.cpp |
 | 2-4 | BC 포맷 옵션 UI | 속성/툴옵션에서 BC0~BC7 + ARGB8888(비압축) 선택 | EFConfig.h/cpp, Dlg.cpp |
 | 2-5 | SPR2 로딩/편집 | 기존 .spr2 파일 열어서 프레임 편집 | SprDoc.cpp, Sprite2.cpp |
@@ -279,7 +279,7 @@ Frame Table (32 bytes per frame x Frame Count):
 
 | # | 작업 | 설명 | 영향 파일 |
 |---|------|------|-----------|
-| 3-1 | 트루컬러 파츠 합성 | 5개 레이어 32bit 합성 | CharDoc.cpp, CharMixView.cpp |
+| 3-1 | 트루컬러 파츠 합성 | CDib32 기반 5개 레이어 32bit ARGB 합성 (`AlphaBlit()` 활용) | CharDoc.cpp, CharMixView.cpp |
 | 3-2 | 캐릭터 SPR2 출력 | 합성 결과를 .spr2로 저장 | CharDoc.cpp, CharOriginView.cpp |
 
 #### Phase 4: Object/Map Editor 개선
