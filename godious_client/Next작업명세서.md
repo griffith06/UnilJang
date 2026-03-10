@@ -5,17 +5,26 @@
 
 ---
 
-## 해상도 체계 개념 정리
+## 해상도 체계 — 런타임 변수 정리
 
-렌더링 파이프라인에서 사용하는 3가지 해상도 단위. render.ini `[Resolution]`에서 설정.
+렌더링 파이프라인에서 실제로 사용하는 3가지 크기 변수. render.ini `[Resolution]`에서 산출.
 
-| 단위 | 변수 | 기본값 | 설명 |
-|------|------|--------|------|
-| **Original** | `OriginalWidth` × `OriginalHeight` | 1024×768 | 원본 해상도. 게임 로직·뷰 크기 계산의 기준점. 4:3 종횡비로 윈도우 비율에 맞춰 `g_ViewWidth` × `g_ViewHeight` 산출 |
-| **Base** | `BaseWidth` × `BaseHeight` | 1600×900 | 렌더링 출력 해상도. Original로 계산된 뷰를 이 크기로 스트레칭하여 최종 출력 |
-| **순환버퍼** | `g_ScrollBuffXLen` × `g_ScrollBuffYLen` | 뷰+256 × 뷰+128 | 타일 렌더링용 GPU 텍스처(`CTileRenderer::pSRV`). 뷰 + 상하좌우 타일 2개 여유분. WRAP 샘플링. **타일(지면)만 포함** → 물 굴절(refraction) 소스로 직접 사용 |
+> `OriginalWidth` × `OriginalHeight`는 render.ini 설정값(1024×768)으로, 아래 `g_ViewWidth/Height` 계산의 **입력**으로만 쓰이고 런타임 렌더링에 직접 참조되지 않는다.
 
-**흐름:** Original → 뷰 크기 계산 → 순환버퍼(타일 렌더) → 뷰 영역 추출 → Base로 스트레칭 → 최종 출력
+| 런타임 변수 | 기본값 예시 | 산출 방식 | 용도 |
+|-------------|-------------|-----------|------|
+| `g_ViewWidth` × `g_ViewHeight` | 1024×768 | Original 종횡비(4:3) × 윈도우 비율 → 4px 정렬 | 뷰 영역. 게임 로직 기준 화면 크기. `g_FBWidth/Height`와 동일 |
+| `g_ScrollBuffXLen` × `g_ScrollBuffYLen` | 1280×896 | `g_ViewWidth+256` × `g_ViewHeight+128` | 순환버퍼 GPU 텍스처(`CTileRenderer::pSRV`). 뷰 + 타일 2개 여유분. WRAP 샘플링. **타일(지면)만 포함** → 물 굴절 소스로 직접 사용 |
+| `BaseWidth` × `BaseHeight` | 1600×900 | render.ini 직접 읽음 | 최종 출력 해상도. 뷰를 이 크기로 스트레칭하여 화면 출력 |
+
+**흐름:**
+```
+render.ini Original(1024×768) → g_ViewWidth × g_ViewHeight 계산
+  → 순환버퍼(g_ScrollBuff*) 에 타일 렌더
+    → 뷰 영역 추출
+      → BaseWidth × BaseHeight 로 스트레칭
+        → 최종 출력
+```
 
 > 순환버퍼는 건물·캐릭터를 포함하지 않으므로, 물 굴절 시 별도 RT 복사 없이 `CTileRenderer::pSRV`를 직접 바인딩한다 (RT_PrevScene 불필요).
 
