@@ -5,6 +5,22 @@
 
 ---
 
+## 해상도 체계 개념 정리
+
+렌더링 파이프라인에서 사용하는 3가지 해상도 단위. render.ini `[Resolution]`에서 설정.
+
+| 단위 | 변수 | 기본값 | 설명 |
+|------|------|--------|------|
+| **Original** | `OriginalWidth` × `OriginalHeight` | 1024×768 | 원본 해상도. 게임 로직·뷰 크기 계산의 기준점. 4:3 종횡비로 윈도우 비율에 맞춰 `g_ViewWidth` × `g_ViewHeight` 산출 |
+| **Base** | `BaseWidth` × `BaseHeight` | 1600×900 | 렌더링 출력 해상도. Original로 계산된 뷰를 이 크기로 스트레칭하여 최종 출력 |
+| **순환버퍼** | `g_ScrollBuffXLen` × `g_ScrollBuffYLen` | 뷰+256 × 뷰+128 | 타일 렌더링용 GPU 텍스처(`CTileRenderer::pSRV`). 뷰 + 상하좌우 타일 2개 여유분. WRAP 샘플링. **타일(지면)만 포함** → 물 굴절(refraction) 소스로 직접 사용 |
+
+**흐름:** Original → 뷰 크기 계산 → 순환버퍼(타일 렌더) → 뷰 영역 추출 → Base로 스트레칭 → 최종 출력
+
+> 순환버퍼는 건물·캐릭터를 포함하지 않으므로, 물 굴절 시 별도 RT 복사 없이 `CTileRenderer::pSRV`를 직접 바인딩한다 (RT_PrevScene 불필요).
+
+---
+
 ## 1. x64 전환 (~2.5일)
 
 > 게임 클라이언트(GcX.exe)만 x64 전환. RESTools는 Win32 유지.
@@ -533,7 +549,7 @@ MainProc = (WNDPROC)SetWindowLongPtr(editWin, GWLP_WNDPROC, (LONG_PTR)EditWinPro
 2. 필수 RT 생성:
    - `RT_Scene` — 씬 렌더링용 (render.ini 해상도)
    - `RT_LightMap` — 라이트맵용 (1/2 또는 1/4 해상도, `DXGI_FORMAT_R8G8B8A8_UNORM`, `D3D11_USAGE_DYNAMIC`)
-   - `RT_PrevScene` — 이전 프레임 씬 (물 굴절용, 1/2 또는 1/4)
+   - ~~`RT_PrevScene`~~ — **불필요**: 물 굴절은 순환버퍼 SRV 직접 참조 (해상도 체계 개념 정리 참조)
    - `RT_PostA`, `RT_PostB` — 후처리 핑퐁 RT 2장
 
 3. 유틸 함수:
@@ -915,22 +931,30 @@ fread(&location, sizeof(LPBYTE), 1, fp);  // 32bit=4바이트, 64bit=8바이트
 
 #### 3-1-3. 물 렌더링 2단계 — 굴절
 
+> **핵심 설계**: 별도 RT 복사 없이 **순환버퍼 SRV(`CTileRenderer::pSRV`)를 직접 바인딩**.
+> 순환버퍼는 타일(지면)만 포함 → 건물·가로등·캐릭터 일렁임 문제 원천 차단. 추가 복사/축소 비용 0.
+
 **작업 내용:**
-1. `RT_PrevScene` 활용: 매 프레임 바닥 RT를 축소 복사
+1. 순환버퍼 SRV 바인딩: 물 셰이더 `t1` 슬롯에 `CTileRenderer::pSRV` 바인딩. scroll offset 기반 UV 보정 (기존 `Render()`의 UV 계산 재활용)
 2. 물 셰이더 `PS_Water2`:
    ```hlsl
+   // t1 = 순환버퍼 SRV (CTileRenderer::pSRV)
+   // s1 = pSamplerWrap (WRAP + bilinear)
    float4 PS_Water2(VS_OUTPUT input) : SV_Target {
        float2 distortion = float2(sin(input.uv.y * 20 + time * 3), cos(input.uv.x * 15 + time * 2)) * refractStrength;
-       float4 refracted = prevSceneTex.Sample(sampler, input.uv + distortion);
+       float2 scrollUV = input.uv + scrollOffset;  // 순환버퍼 UV 보정
+       float4 refracted = scrollBufTex.Sample(wrapSampler, scrollUV + distortion);
        float4 water = refracted * waterTint;
        water.a = waterOpacity;
        return water;
    }
    ```
 3. 코스틱 텍스처 추가: 가산 블렌딩
+4. WaterParams 상수 버퍼에 `scrollOffset` 추가 (순환버퍼 UV 보정용)
 
 **검증:**
 - [ ] 물밑 바닥이 일렁이며 비치는지 확인
+- [ ] 물 위 건물/캐릭터는 일렁이지 않는지 확인
 
 #### 3-1-4. 맵별 물 설정
 

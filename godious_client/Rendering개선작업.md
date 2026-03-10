@@ -17,6 +17,33 @@
 | **툴** | RESTools(EF.exe) — SPR/SPR2 제작, 타일맵 편집, FGP 배치 등 리소스 제작 전용 |
 | **동시** | 엔진과 에디터/툴 양쪽 모두 수정 필요 (또는 독립 병행 가능) |
 
+### 해상도 체계 개념 정리
+
+렌더링 파이프라인에서 사용하는 3가지 해상도 단위. render.ini `[Resolution]`에서 설정.
+
+| 단위 | 변수 | 기본값 | 설명 |
+|------|------|--------|------|
+| **Original** | `OriginalWidth` × `OriginalHeight` | 1024×768 | 원본 해상도. 게임 로직·뷰 크기 계산의 기준점. 4:3 종횡비 기준으로 윈도우 비율에 맞춰 `g_ViewWidth` × `g_ViewHeight`를 산출 |
+| **Base** | `BaseWidth` × `BaseHeight` | 1600×900 | 렌더링 출력 해상도. Original 기준으로 계산된 뷰를 이 크기로 스트레칭하여 최종 출력 |
+| **순환버퍼** | `g_ScrollBuffXLen` × `g_ScrollBuffYLen` | 뷰+256 × 뷰+128 | 타일 렌더링용 GPU 텍스처(`CTileRenderer::pSRV`). 뷰 영역 + 상하좌우 타일 2개씩 여유분. WRAP 샘플링으로 스크롤 구현. **타일(지면)만 포함**하므로 물 굴절(refraction) 소스로 직접 사용 가능 |
+
+**흐름:** Original → 뷰 크기 계산 → 순환버퍼(타일 렌더) → 뷰 영역 추출 → Base로 스트레칭 → 최종 출력
+
+```
+[순환버퍼 텍스처]                    [최종 출력]
+┌─────────────────────┐
+│  여유  │  여유       │
+│────┌──────────┐─────│         ┌──────────────┐
+│    │ View     │     │  ──→    │   Base       │
+│    │ (Original│     │ stretch │   1600×900   │
+│    │  기준)   │     │         │              │
+│────└──────────┘─────│         └──────────────┘
+│  여유  │  여유       │
+└─────────────────────┘
+  g_ScrollBuffXLen
+  × g_ScrollBuffYLen
+```
+
 ### 툴-게임 프리뷰 전략
 
 렌더링 관련 편집(광원, 물, 환경, 포스트프로세싱)은 RESTools가 아닌 **GcX.exe 에디터 모드**에서 수행한다. RESTools는 리소스 제작(SPR/SPR2, 타일, FGP)에만 집중한다.
@@ -153,7 +180,7 @@ SPR2는 멀티프레임이므로 **액션 8개를 1파일로 통합** → 고유
 | 1-1-1 | RT 관리 클래스 설계 | 이름 기반 RT 생성/해제/바인딩 관리자 (`RenderTargetManager`) | **엔진** |
 | 1-1-2 | RT_Scene 생성 | 씬 렌더링용 RT (800×600 또는 실제 해상도) | **엔진** |
 | 1-1-3 | RT_LightMap 생성 | 라이트맵용 RT (`render.ini` [Resolution] OriginalWidth/OriginalHeight의 1/2 또는 1/4), `DXGI_FORMAT_R8G8B8A8_UNORM`, `D3D11_USAGE_DYNAMIC` | **엔진** |
-| 1-1-4 | RT_PrevScene 생성 | 이전 프레임 씬 버퍼 (`render.ini` [Resolution] OriginalWidth/OriginalHeight의 1/2 또는 1/4), 물 굴절/열기왜곡용 | **엔진** |
+| 1-1-4 | ~~RT_PrevScene 생성~~ | ~~이전 프레임 씬 버퍼~~ → **불필요**: 물 굴절은 순환버퍼 SRV(`CTileRenderer::pSRV`)를 직접 참조. 타일만 포함되어 물 위 오브젝트 일렁임 문제 없음. 열기왜곡은 후처리 체인(Step 7)에서 RT_Scene 사용 | — |
 | 1-1-5 | RT_PostProcess 생성 | 후처리 체이닝용 핑퐁 RT 2장 | **엔진** |
 | 1-1-6 | RT 전환 헬퍼 함수 | `SetRenderTarget()`, `RestoreBackBuffer()`, `CopyRT()` 등 유틸 | **엔진** |
 
@@ -368,14 +395,20 @@ SPR2는 멀티프레임이므로 **액션 8개를 1파일로 통합** → 고유
 
 ### 4-3. 물 렌더링 2단계 — 굴절
 
+> **핵심 설계**: 굴절 소스로 별도 RT 복사 없이 **순환버퍼 SRV(`CTileRenderer::pSRV`)를 직접 바인딩**한다.
+> - 순환버퍼는 타일(지면)만 포함 → 건물·가로등·캐릭터가 일렁이는 문제 원천 차단
+> - 이미 GPU에 SRV로 존재 → 추가 복사/축소 비용 0, RTV 전환 불필요
+> - WRAP sampler 활용으로 순환 오프셋 UV 계산도 기존 로직 재활용 가능
+> - 해상도 축소(1/4 등) 불필요 — 순환버퍼 자체가 뷰+여유분 크기로 적절
+
 | # | 세부 작업 | 설명 | 비고 |
 |---|-----------|------|------|
-| 4-3-1 | RT_PrevScene 활용 | 매 프레임 끝에 바닥 RT를 OriginalWidth/Height의 1/2 또는 1/4로 축소 복사 → RT_PrevScene | **엔진** |
-| 4-3-2 | 물 셰이더 2단계 | 사인파 기반 UV 왜곡으로 RT_PrevScene 굴절 샘플링 | **엔진** |
+| 4-3-1 | 순환버퍼 SRV 바인딩 | 물 셰이더의 `t1` 슬롯에 `CTileRenderer::pSRV` 바인딩. scroll offset 기반 UV 보정 (기존 `Render()`의 UV 계산 재활용) | **엔진** |
+| 4-3-2 | 물 셰이더 2단계 | 사인파 기반 UV 왜곡으로 순환버퍼 텍스처 굴절 샘플링 (`pSamplerWrap` + bilinear filtering) | **엔진** |
 | 4-3-3 | 코스틱 텍스처 | 코스틱 노이즈 텍스처 추가, UV 스크롤 + 가산 블렌딩 | **엔진** |
-| 4-3-4 | WaterParams 상수 버퍼 | time, refractStrength, waterOpacity, causticIntensity, waterTint, scrollSpeed | **엔진** |
+| 4-3-4 | WaterParams 상수 버퍼 | time, refractStrength, waterOpacity, causticIntensity, waterTint, scrollSpeed, scrollOffset(순환버퍼 UV 보정용) | **엔진** |
 
-**검증**: 물밑 바닥이 일렁이며 비치는지 확인. 기존 팔레트 스크롤 대비 품질 비교.
+**검증**: 물밑 바닥이 일렁이며 비치는지 확인. 물 위 건물/캐릭터는 일렁이지 않는지 확인. 기존 팔레트 스크롤 대비 품질 비교.
 
 ### 4-4. 맵별 물 설정
 
@@ -858,7 +891,7 @@ Step 15 (고급 기법)
 |------------|------|-----------|-----------|
 | **CP-1** | Step 2 완료 후 | 라이트맵 성능/비주얼 | render.ini OriginalWidth/Height 기준 1/4 해상도 부족 시 1/2로 변경, CPU 병목 시 GPU 컴퓨트로 전환 |
 | **CP-2** | Step 3 완료 후 | 전투 피드백 체감 | 파라미터 과다 → 축소, 온라인 동기화 이슈 → 서버 연동 검토 |
-| **CP-3** | Step 4-3 완료 후 | 물 굴절 품질/성능 | RT_PrevScene 해상도 조정 (render.ini 기준 1/4↔1/2), 1프레임 딜레이 문제 시 현프레임 복사로 변경 |
+| **CP-3** | Step 4-3 완료 후 | 물 굴절 품질/성능 | 순환버퍼 SRV 직접 참조로 복사 비용 없음. bilinear 샘플링 품질 부족 시 순환버퍼 텍스처 포맷/필터 조정 검토 |
 | **CP-4** | Step 5-2 완료 후 | 블룸 과도 여부 | threshold/intensity 조정, 맵별 블룸 on/off |
 | **CP-5** | Step 9 완료 후 | 전체 분위기 통합 | 맵별 프리셋 밸런싱, 효과 과다 시 일부 비활성화 |
 | **CP-6** | Step 13 완료 후 | 텍스처 블렌딩 에셋 작업량 | 47패턴 → 8패턴 간소화, 디더링 블렌딩으로 대체 |
