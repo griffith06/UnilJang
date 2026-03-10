@@ -153,7 +153,7 @@ Float3 ──→ CDib ──→ CSprite ──→ CFieldSprite / CFieldObj
 | **.map** | 타일맵 데이터 (WORD 배열) | Map Editor |
 | **.att** | 맵 속성 데이터 (비트플래그) | Map Editor |
 | **.nod** | 트리 구조 데이터 (CharTree, ObjTree, FgpTree, MobMgrTree) | 각 트리뷰 |
-| **.dat** | 캐릭터/몬스터 데이터 | Char Editor |
+| **.dat** | 캐릭터 부위별 SPR 통합 아카이브 (Char.dat: 22,487개 SPR 패킹, 391MB 비압축). CharBind.dll 또는 외부 도구로 생성. RESTools는 읽기만 (MapDoc.cpp 몬스터 프리뷰용). **SPR2 전환 완료 후 폐기 예정** | Char Editor (간접) |
 | **.cfg** | 맵 설정 | Map Editor |
 
 ---
@@ -217,7 +217,7 @@ fread(m_iIdx, sizeof(int), m_iSprMax + 1, fp);
 | **.att** | 수정 불필요 | 속성 비트플래그만, SPR 무관 |
 | **.pcx** | 입력으로 유지 | 기존 소스 입력용으로 계속 사용 |
 | **.nod** | 확인 필요 | 트리 데이터에 파일 경로 포함 시 .spr2 인식 필요 |
-| **.dat** | 확인 필요 | 캐릭터 파일명 규칙에 확장자 포함 여부 |
+| **.dat** | **폐기 예정** | Char.dat는 22,487개 부위별 SPR 통합 아카이브 (391MB 비압축). SPR2 전환 시 액션별 SPR을 부위별 멀티프레임 SPR2 ~1,500개로 통합 (391MB → ~15-30MB BC7). Char.dat/Char.Off 삭제, MapDoc.cpp도 개별 SPR2 로드로 전환 |
 
 ### SPR2 파일 포맷 (안)
 
@@ -290,13 +290,15 @@ Frame Table (32 bytes per frame x Frame Count):
 | 4-2 | Object Editor SPR2 | 오브젝트에 .spr2 레이어 지원 | ObjDoc.cpp, ObjMainView.cpp |
 | 4-3 | Map Editor SPR2 프리뷰 | 맵에 SPR2 오브젝트 표시 | MapMainView.cpp |
 
-#### Phase 5: 레거시 호환 / 마무리
+#### Phase 5: 레거시 호환 / Char.dat 폐기 / 마무리
 
 | # | 작업 | 설명 | 영향 파일 |
 |---|------|------|-----------|
 | 5-1 | SPR→SPR2 일괄 변환기 | 기존 .spr + .pal → .spr2 배치 변환 | 신규 유틸 또는 메뉴 |
-| 5-2 | 기존 SPR 로더 유지 | CSprite 클래스 그대로 공존 | Sprite.h/cpp (변경 없음) |
-| 5-3 | .nod/.dat 확장자 처리 | 트리 데이터에서 .spr2 인식 | CharTreeView.cpp 등 |
+| 5-2 | **Char.dat 언팩 + SPR2 변환** | Char.Off 인덱스로 Char.dat에서 22,487개 SPR 추출 → 동일 부위의 액션별 SPR(8개)을 1개 멀티프레임 SPR2로 통합 → **~1,500개 SPR2 파일** (391MB → ~15-30MB BC7). Char.dat/Char.Off/CharBind.dll 삭제 | 신규 유틸, Sprite.cpp (InitCharBind/CharBindFileRead 제거) |
+| 5-3 | **MapDoc.cpp Char.dat 의존 제거** | 몬스터 SPR 프리뷰를 Char.dat 대신 개별 SPR2 파일에서 직접 로드하도록 변경 | MapDoc.cpp |
+| 5-4 | 기존 SPR 로더 유지 | CSprite 클래스 그대로 공존 | Sprite.h/cpp (변경 없음) |
+| 5-5 | .nod/.dat 확장자 처리 | 트리 데이터에서 .spr2 인식 | CharTreeView.cpp 등 |
 
 ### 게임 엔진 쪽 작업 (별도)
 

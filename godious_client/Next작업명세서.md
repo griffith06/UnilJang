@@ -316,41 +316,69 @@ extern AudioEngine gAudioEngine;
 
 ---
 
-### 1-5. CharBind.dll 64비트 대응 (~2h)
+### 1-5. CharBind.dll 제거 + Char.dat 폐기 전략 (~2h)
 
-**현재 상태 (Winmain.cpp:717~735):**
+**현재 상태:**
+
+`CharBind.dll` (28KB, 소스 없음):
 ```cpp
+// Winmain.cpp:717~735
 hLib = LoadLibrary("CharBind.dll");
 if (hLib) {
     f = GetProcAddress(hLib, "UpdateCharBind");
     updateCharBind = (UpdateCharBind)f;
-    gLOAD_SPR = updateCharBind();
+    gLOAD_SPR = updateCharBind();  // BOOL 반환, TRUE여야 캐릭터 SPR 로딩 진행
     FreeLibrary(hLib);
 }
 ```
-- `CharBind.dll`은 런타임 로드, `UpdateCharBind()` 함수 호출
-- `Sprite.cpp`에서 `EndCharBind()`, `InitCharBind()`, `CharBindFileRead()` 사용
+
+`Char.dat` / `Char.Off` 구조:
+- `Char.Off` (637KB) — 인덱스: `sFileBind` 구조체 × 22,487개 (fileName[21] + fileOffset + fileSize)
+- `Char.dat` (391MB) — **캐릭터 부위별 SPR 22,487개를 하나로 패킹한 아카이브** (비압축)
+- 파일명 패턴: `B{sex}{armor}{color}{action}.SPR` (몸통), `H{...}.SPR` (머리), `L{...}.SPR` (다리), `W{...}.SPR` (무기) 등
+- 개별 SPR 파일과 **중복 없음** — `Char/` 디렉토리는 비어있고 Char.dat만 존재
+- `Sprite.cpp`의 `InitCharBind()`/`CharBindFileRead()`로 인덱스 검색 → seek → 로드
+
+RESTools 관련:
+- `MapDoc.cpp`에서 Char.dat **읽기만** 함 (몬스터 SPR 프리뷰용)
+- RESTools C++ 코드에 Char.dat **생성 기능 없음** — CharBind.dll 또는 별도 외부 도구가 패킹 담당
+- Character Editor는 부위별 개별 SPR을 생성하는 도구 (Char.dat 패킹은 별도)
+
+**폐기 근거:**
+- SPR→SPR2 전환 후, 부위별 SPR2를 GPU에서 실시간 합성 + 캐싱하면 **사전 패킹된 Char.dat 불필요**
+- 현재 매 프레임 부위별 DrawClipping × 4~5회 → SPR2 GPU 합성 후 캐시 텍스쳐 1회 DrawCall로 개선
+- 현재 22,487개 SPR은 액션(8종)별로 개별 파일 → SPR2 멀티프레임으로 통합 시 **~1,500개**로 감소
+- 391MB 비압축 → **~15-30MB** (BC7 압축, 부위별 멀티프레임 SPR2)
+- CharBind.dll 소스 없음 → DLL 의존성 제거 필요
+
+**용량 비교:**
+
+| 방식 | 파일 수 | 예상 용량 |
+|------|---------|-----------|
+| 현재 Char.dat | 22,487 SPR (액션별 개별) | 391MB (비압축) |
+| **SPR2 (부위별 멀티프레임)** | **~1,500 SPR2** | **~15-30MB (BC7)** |
 
 **작업 내용:**
 
-1. **CharBind.dll 소스 존재 여부 확인:**
-   - `d:\godius\trunk\` 하위에 CharBind 프로젝트가 있는지 탐색
-   - 있으면 → x64로 재빌드하여 `CharBind64.dll` 또는 `CharBind.dll` (x64) 생성
-   - 없으면 → 아래 2번 진행
+1. **CharBind.dll 제거 — ✅ 완료:**
+   - `Winmain.cpp:716~756` LoadLibrary/GetProcAddress/FreeLibrary 블록 전체 제거
+   - `gLOAD_SPR = InitCharBind()` 직접 호출로 변경 (DLL 경유 제거)
+   - `CharBind.dll` 파일 삭제 예정 (바이너리만 남아있음, 소스 없음)
+   - 검증: Debug 빌드 + `render.ini bOnline=0` 오프라인 모드에서 정상 동작 확인
 
-2. **소스가 없는 경우 — 기능 본체 통합:**
-   - `CharBind.dll`이 하는 일 파악: `UpdateCharBind()` → 스프라이트 바인딩 검증/초기화
-   - `Sprite.cpp`의 `InitCharBind()`, `EndCharBind()`, `CharBindFileRead()` 분석
-   - 해당 기능을 직접 본체 코드에 통합 (DLL 로드 제거)
-   - `Winmain.cpp`에서 LoadLibrary 블록을 직접 호출로 교체
+2. **Char.dat 유지 → SPR2 전환 완료 후 폐기 (Phase 5):**
+   - 당장은 InitCharBind() / CharBindFileRead() 유지 (기존 SPR 로딩 경로)
+   - SPR2 전환 완료 시점에 Char.dat에서 22,487개 SPR 추출 → 동일 부위 액션별 SPR을 1개 멀티프레임 SPR2로 통합 (~1,500개)
+   - 변환 완료 후 Char.dat, Char.Off, InitCharBind(), EndCharBind(), CharBindFileRead() 코드 전부 제거
+   - `LoadCharData()` → 개별 SPR2 파일에서 직접 로드 + GPU 합성 캐시로 전환
 
-3. **DLL 로드 실패 시 게임 종료하는 로직 수정:**
-   - 현재 DLL 없으면 MessageBox + return FALSE → 게임 실행 불가
-   - 본체 통합 시 이 분기 자체가 불필요
+3. **RESTools MapDoc.cpp Char.dat 읽기 제거 (Phase 5):**
+   - 몬스터 SPR 프리뷰를 개별 SPR2 파일에서 직접 로드하도록 변경
 
 **검증:**
-- [ ] CharBind 기능이 정상 동작 (스프라이트 로딩 확인)
+- [x] CharBind.dll 제거 후 `gLOAD_SPR = InitCharBind()`로 캐릭터 SPR 정상 로딩 확인 (Debug + bOnline=0 오프라인 모드)
 - [ ] x64 빌드에서 DLL 관련 에러 없음
+- [ ] (Phase 5) Char.dat 삭제 후 ~1,500개 부위별 SPR2에서 캐릭터 정상 렌더링 확인
 
 ---
 
@@ -784,26 +812,36 @@ fread(&location, sizeof(LPBYTE), 1, fp);  // 32bit=4바이트, 64bit=8바이트
 **대상 파일:** `LightMap.cpp` 또는 신규 `DayNightCycle.h/cpp`
 
 **작업 내용:**
-1. 8구간 앰비언트 테이블:
-   ```cpp
-   // 시간대 → RGB 앰비언트
-   {  0:00, (0.15, 0.15, 0.25) },  // 깊은밤
-   {  4:00, (0.20, 0.20, 0.35) },  // 새벽
-   {  6:00, (0.60, 0.50, 0.40) },  // 일출
-   {  8:00, (1.00, 1.00, 1.00) },  // 아침
-   { 12:00, (1.00, 1.00, 0.95) },  // 정오
-   { 17:00, (0.90, 0.70, 0.50) },  // 석양
-   { 19:00, (0.40, 0.35, 0.50) },  // 해질녘
-   { 21:00, (0.20, 0.20, 0.30) },  // 밤
+1. 8구간 앰비언트 테이블을 **render.ini `[DayNight]` 섹션**에 정의 (C++ 하드코딩 금지):
+   ```ini
+   [DayNight]
+   ; 앰비언트 테이블: Hour=R,G,B (0.0~1.0)
+   AmbientCount=8
+   Ambient0=0,   0.15, 0.15, 0.25   ; 깊은밤
+   Ambient1=4,   0.20, 0.20, 0.35   ; 새벽
+   Ambient2=6,   0.60, 0.50, 0.40   ; 일출
+   Ambient3=8,   1.00, 1.00, 1.00   ; 아침
+   Ambient4=12,  1.00, 1.00, 0.95   ; 정오
+   Ambient5=17,  0.90, 0.70, 0.50   ; 석양
+   Ambient6=19,  0.40, 0.35, 0.50   ; 해질녘
+   Ambient7=21,  0.20, 0.20, 0.30   ; 밤
    ```
 
-2. Lerp 보간: 현재 시간 → 인접 2구간 보간 → 앰비언트 색상
-3. 실내 맵 예외: 맵 플래그 `isIndoor` → 밤낮 무시, 고정 앰비언트
-4. 맵별 앰비언트 오버라이드: `.cfg`에 `ambientOverride` 섹션
+2. C++ 파서: 기존 render.ini 파싱 코드에 `[DayNight]` 섹션 추가
+   - `AmbientCount` 읽기 → `Ambient0`~`AmbientN` 루프 파싱
+   - 각 항목을 `hour(float), r(float), g(float), b(float)` 로 파싱하여 `std::vector<AmbientEntry>` 에 저장
+   - 파싱 실패 또는 섹션 없을 경우 위 기본값을 폴백으로 사용
+
+3. Lerp 보간: 현재 시간 → 인접 2구간 보간 → 앰비언트 색상
+4. 실내 맵 예외:
+   - 맵 `.cfg`에 `isIndoor=1` 플래그 → 밤낮 무시, 고정 앰비언트
+   - **RESTools 맵 에디터에 `isIndoor` 체크박스 추가** (맵 속성 패널)
+   - 체크 시 `.cfg` 저장에 `isIndoor=1` 기록, 게임 엔진이 로드 시 읽어서 밤낮 사이클 비활성화
+5. 맵별 앰비언트 오버라이드: `.cfg`에 `ambientOverride` 섹션
 
 **검증:**
 - [ ] 에디터 모드에서 시간 빠르게 진행 → 하루 사이클 시각적 확인
-- [ ] 실내 맵 전환 시 앰비언트 고정 확인
+- [ ] RESTools 맵 에디터에서 `isIndoor` 체크 → `.cfg` 저장 → 게임에서 로드 시 밤낮 고정 확인
 
 #### 2-4-4. 맵 에디터 — 광원 배치 지원
 
@@ -1279,3 +1317,5 @@ fread(&location, sizeof(LPBYTE), 1, fp);  // 32bit=4바이트, 64bit=8바이트
 | Step 8-2 나머지 | 낙엽/먼지/불씨 파티클 | 5주차 |
 | Step 8-3 | 인터랙션 파티클 (발자국/물파문/전투) | 5주차 |
 | E-2 Phase 5 | SPR→SPR2 일괄 변환기 | 5주차 |
+| Char.dat 폐기 | Char.dat 22,487개 SPR → 부위별 멀티프레임 SPR2 ~1,500개로 통합 변환 (391MB→~15-30MB) → Char.dat/Char.Off 삭제 | 5주차 |
+| 캐릭터 GPU 합성 캐시 | 부위별 SPR2를 GPU에서 합성 → 캐시 텍스쳐 (장비 변경 시만 재합성, DrawCall 4~5→1) | 5주차 |
