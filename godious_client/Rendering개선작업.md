@@ -24,7 +24,7 @@
 | 단위 | 변수 | 기본값 | 설명 |
 |------|------|--------|------|
 | **Original** | `OriginalWidth` × `OriginalHeight` | 1024×768 | 원본 해상도. 게임 로직·뷰 크기 계산의 기준점. 4:3 종횡비 기준으로 윈도우 비율에 맞춰 `g_ViewWidth` × `g_ViewHeight`를 산출 |
-| **Base** | `BaseWidth` × `BaseHeight` | 1600×900 | 렌더링 출력 해상도. Original 기준으로 계산된 뷰를 이 크기로 스트레칭하여 최종 출력 |
+| **Render** | `RenderWidth` × `RenderHeight` | 1600×900 | 렌더링 출력 해상도. Original 기준으로 계산된 뷰를 이 크기로 스트레칭하여 최종 출력 |
 | **순환버퍼** | `g_ScrollBuffXLen` × `g_ScrollBuffYLen` | 뷰+256 × 뷰+128 | 타일 렌더링용 GPU 텍스처(`CTileRenderer::pSRV`). 뷰 영역 + 상하좌우 타일 2개씩 여유분. WRAP 샘플링으로 스크롤 구현. **타일(지면)만 포함**하므로 물 굴절(refraction) 소스로 직접 사용 가능 |
 
 **흐름:** Original → 뷰 크기 계산 → 순환버퍼(타일 렌더) → 뷰 영역 추출 → Base로 스트레칭 → 최종 출력

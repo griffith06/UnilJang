@@ -15,14 +15,14 @@
 |-------------|-------------|-----------|------|
 | `g_ViewWidth` × `g_ViewHeight` | 1024×768 | Original 종횡비(4:3) × 윈도우 비율 → 4px 정렬 | 뷰 영역. 게임 로직 기준 화면 크기. `g_FBWidth/Height`와 동일 |
 | `g_ScrollBuffXLen` × `g_ScrollBuffYLen` | 1280×896 | `g_ViewWidth+256` × `g_ViewHeight+128` | 순환버퍼 GPU 텍스처(`CTileRenderer::pSRV`). 뷰 + 타일 2개 여유분. WRAP 샘플링. **타일(지면)만 포함** → 물 굴절 소스로 직접 사용 |
-| `BaseWidth` × `BaseHeight` | 1600×900 | render.ini 직접 읽음 | 최종 출력 해상도. 뷰를 이 크기로 스트레칭하여 화면 출력 |
+| `RenderWidth` × `RenderHeight` | 1600×900 | render.ini 직접 읽음 | 최종 출력 해상도. 뷰를 이 크기로 스트레칭하여 화면 출력 |
 
 **흐름:**
 ```
 render.ini Original(1024×768) → g_ViewWidth × g_ViewHeight 계산
   → 순환버퍼(g_ScrollBuff*) 에 타일 렌더
     → 뷰 영역 추출
-      → BaseWidth × BaseHeight 로 스트레칭
+      → RenderWidth × RenderHeight 로 스트레칭
         → 최종 출력
 ```
 
@@ -837,20 +837,29 @@ fread(&location, sizeof(LPBYTE), 1, fp);  // 32bit=4바이트, 64bit=8바이트
 **대상 파일:** `LightMap.cpp` 또는 신규 `DayNightCycle.h/cpp`
 
 **작업 내용:**
-1. 8구간 앰비언트 테이블을 **render.ini `[DayNight]` 섹션**에 정의 (C++ 하드코딩 금지):
+1. 10구간 앰비언트 테이블을 **render.ini `[DayNight]` 섹션**에 정의 (C++ 하드코딩 금지):
    ```ini
    [DayNight]
-   ; 앰비언트 테이블: Hour=R,G,B (0.0~1.0)
-   AmbientCount=8
-   Ambient0=0,   0.15, 0.15, 0.25   ; 깊은밤
-   Ambient1=4,   0.20, 0.20, 0.35   ; 새벽
-   Ambient2=6,   0.60, 0.50, 0.40   ; 일출
-   Ambient3=8,   1.00, 1.00, 1.00   ; 아침
-   Ambient4=12,  1.00, 1.00, 0.95   ; 정오
-   Ambient5=17,  0.90, 0.70, 0.50   ; 석양
-   Ambient6=19,  0.40, 0.35, 0.50   ; 해질녘
-   Ambient7=21,  0.20, 0.20, 0.30   ; 밤
+   ; 앰비언트 테이블: Hour, R, G, B (0.0~1.0)
+   ; 실제 자연광 기준: 낮(8~17시) 밝기 유지, 일출/일몰 구간에서만 급변
+   AmbientCount=10
+   Ambient0=0,   0.10, 0.10, 0.20   ; 한밤중
+   Ambient1=4,   0.12, 0.12, 0.25   ; 새벽 전
+   Ambient2=5.5, 0.50, 0.40, 0.35   ; 일출 시작 (동틀녘)
+   Ambient3=7,   0.90, 0.85, 0.80   ; 일출 완료 (따뜻한 아침)
+   Ambient4=8,   1.00, 1.00, 1.00   ; 아침 (완전 밝음)
+   Ambient5=17,  1.00, 1.00, 0.98   ; 오후 5시 (밝기 유지)
+   Ambient6=18.5,0.85, 0.65, 0.45   ; 석양 (붉은 노을)
+   Ambient7=19.5,0.40, 0.30, 0.40   ; 해질녘 (보라빛)
+   Ambient8=21,  0.18, 0.16, 0.28   ; 초저녁
+   Ambient9=23,  0.10, 0.10, 0.20   ; 깊은밤
    ```
+
+   **설계 원칙:**
+   - **낮(8~17시)**: 9시간 동안 밝기 거의 동일 (1.0) — 대낮 야외 활동 시간
+   - **일출(4~8시)**: 4시간에 걸쳐 점진적으로 밝아짐
+   - **일몰(17~19.5시)**: 2.5시간 집중 변화 (골든아워→블루아워)
+   - **밤(21~4시)**: 7시간 동안 어두움 유지, 미세한 변화만
 
 2. C++ 파서: 기존 render.ini 파싱 코드에 `[DayNight]` 섹션 추가
    - `AmbientCount` 읽기 → `Ambient0`~`AmbientN` 루프 파싱

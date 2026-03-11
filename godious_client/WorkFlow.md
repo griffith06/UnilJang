@@ -189,7 +189,7 @@
 #### 배경 + 캐릭터 렌더링 (종횡비 유지)
 - [x] `render.ini`에 해상도 설정 추가
   - `OriginalWidth=800`, `OriginalHeight=600` (원본 해상도)
-  - `BaseWidth=1600`, `BaseHeight=1200` (기준 해상도, 원본의 2배)
+  - `RenderWidth=800`, `RenderHeight=600` (렌더링 해상도, 배경/캐릭터 렌더링 기준)
 - [ ] 4:3보다 넓은 해상도(예: 1920×1200 = 16:10) 대응: 좌우 추가 영역만큼 맵 스크롤 가시 범위 확장 (레터박스 없이)
   - [ ] `dVIEW_WIDTH`, `dSCROLL_BUFF_XLEN`을 런타임 가변으로 전환
   - [ ] `g_FrameBuffer` 크기를 동적 할당으로 변경
