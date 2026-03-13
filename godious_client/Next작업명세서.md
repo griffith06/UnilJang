@@ -902,6 +902,32 @@ fread(&location, sizeof(LPBYTE), 1, fp);  // 32bit=4바이트, 64bit=8바이트
 
 
 ---
+
+### 2-5. CreateBlendPalTable 제거 (성능 최적화)
+
+**완료일:** 2026-03-12
+
+**배경:**
+- `CreateBlendPalTable()`은 팔레트 인덱스 기반 알파 블렌딩 LUT (`m_blendPalTable[3][255][255]`)를 생성
+- 3레벨 × 255 × 255 × 239 = 약 4,660만 회 float 연산 → Debug 빌드 기준 **~1,009ms** 소요
+- DX11 ARGB 파이프라인 전환 이후, `DrawClipping(alpha)` 함수는 `g_PalLUT`로 ARGB 변환 후 CPU 직접 정수 알파 블렌딩을 수행하도록 이미 교체됨
+- `m_blendPalTable`을 **읽는 코드가 프로젝트 전체에서 0건** (생성만 하고 사용하지 않음)
+
+**제거 내용:**
+1. `Video.cpp` — `m_blendPalTable` 전역 변수 + `CreateBlendPalTable()` 함수 본체 제거, `#include "Float3.h"` 제거
+2. `Video.h` — `extern m_blendPalTable` 선언 + `extern CreateBlendPalTable()` 선언 제거 (`ALPHA_TABLE_LEVEL_*` 매크로는 DrawClipping에서 사용하므로 유지)
+3. `OfflineMode.cpp` — `CreateBlendPalTable()` 호출 제거
+4. `UserCharCon.cpp:1959` — 온라인 맵 전환 시 `CreateBlendPalTable()` 호출 제거
+
+**효과:**
+- 시작 시간 **~1,009ms 절약**
+- 메모리 **~190KB 절약** (`BYTE[3][255][255]`)
+
+**검증:**
+- [x] 오프라인 모드 맵 진입 후 알파 블렌딩 스프라이트 (AutoBotGuard, PositionWarBuilding 미니맵 등) 정상 렌더링 확인
+- [ ] 온라인 모드 맵 전환 후 알파 블렌딩 정상 확인
+
+---
 ---
 
 ## 3. 물 렌더링 + 배경 흔들림 + 후처리
@@ -1346,6 +1372,53 @@ fread(&location, sizeof(LPBYTE), 1, fp);  // 32bit=4바이트, 64bit=8바이트
 ---
 ---
 
+## 독립 작업 — 캐릭터 SPR2 전환 + GPU 합성 캐시 (다른 작업과 병행 가능)
+
+> §1-5에서 CharBind.dll 제거 완료. 아래는 Char.dat 완전 폐기까지의 잔여 작업.
+> **다른 섹션(§3~§5)과 의존성 없이 독립 진행 가능**. 우선순위 높음.
+
+### E-2 Phase 5: SPR→SPR2 일괄 변환기
+
+**작업 내용:**
+1. Char.dat에서 22,487개 SPR 추출 (Char.Off 인덱스 기반)
+2. 동일 부위(B/H/L/W 등) + 동일 조합의 액션(8종)별 SPR을 1개 멀티프레임 SPR2로 통합
+3. 결과: ~1,500개 SPR2 파일, BC7 압축 (391MB → ~15-30MB)
+4. 변환기는 CLI 도구로 작성 → `DevBin/`에 배치
+
+**검증:**
+- [ ] 변환된 SPR2 프레임 수/원점이 원본 SPR과 일치
+- [ ] BC7 압축 품질 확인 (원본 대비 시각적 열화 없음)
+
+### Char.dat 폐기 + 캐릭터 GPU 합성 캐시
+
+**현재 흐름:**
+```
+Char.dat(391MB) → seek → SPR 로드 → CPU 팔레트 변환 → 매 프레임 부위별 DrawClipping × 4~5회
+```
+
+**목표 흐름:**
+```
+부위별 SPR2(~15-30MB) → GPU 텍스처 로드 → 장비 변경 시에만 부위 합성 → 캐시 텍스처 1회 DrawCall
+```
+
+**작업 내용:**
+1. `LoadCharData()` 경로 변경: Char.dat seek → 개별 SPR2 파일 로드
+2. GPU 합성 캐시 시스템:
+   - 장비 조합 키(성별+방어구+무기+머리 등) → 해시 → 캐시 텍스처 룩업
+   - 캐시 미스 시: 부위별 SPR2를 RT에 순서대로 합성 → 캐시 저장
+   - 캐시 히트 시: 캐시 텍스처 1회 DrawCall
+   - 장비 변경/외형 변경 시에만 캐시 무효화 + 재합성
+3. 레거시 제거: Char.dat, Char.Off, InitCharBind(), EndCharBind(), CharBindFileRead() 삭제
+4. RESTools MapDoc.cpp: Char.dat 읽기 → 개별 SPR2 로드로 변경
+
+**검증:**
+- [ ] Char.dat 삭제 후 ~1,500개 부위별 SPR2에서 캐릭터 정상 렌더링
+- [ ] 장비 변경 시 캐시 재합성 → 외형 즉시 반영
+- [ ] DrawCall 4~5 → 1 감소 확인
+- [ ] 메모리 사용량: 391MB → ~15-30MB 확인
+
+---
+
 ## 후순위 버퍼 (여유 생기면 추가)
 
 | 항목 | 내용 | 배치 |
@@ -1358,6 +1431,3 @@ fread(&location, sizeof(LPBYTE), 1, fp);  // 32bit=4바이트, 64bit=8바이트
 | Step 5-6 | 모션블러, 필름그레인 | 5주차 |
 | Step 8-2 나머지 | 낙엽/먼지/불씨 파티클 | 5주차 |
 | Step 8-3 | 인터랙션 파티클 (발자국/물파문/전투) | 5주차 |
-| E-2 Phase 5 | SPR→SPR2 일괄 변환기 | 5주차 |
-| Char.dat 폐기 | Char.dat 22,487개 SPR → 부위별 멀티프레임 SPR2 ~1,500개로 통합 변환 (391MB→~15-30MB) → Char.dat/Char.Off 삭제 | 5주차 |
-| 캐릭터 GPU 합성 캐시 | 부위별 SPR2를 GPU에서 합성 → 캐시 텍스쳐 (장비 변경 시만 재합성, DrawCall 4~5→1) | 5주차 |
