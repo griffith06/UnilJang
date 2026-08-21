@@ -41,7 +41,7 @@ Game Programmer / Technical Director / Engine Architect
 
 ### Wemade XR
 **Technical Director (TD)**  
-**2017.03 ~ 현재**
+**2017.03 ~ 2026.04**
 
 #### Legend of Ymir
 - 서버 최적화/안정화 담당
